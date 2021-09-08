@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 use App\Models\Movie;
+use App\Models\Country;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MovieController extends Controller
 {
@@ -13,10 +15,19 @@ class MovieController extends Controller
      */
     public function index()
     {
-        $movies = Movie::all();
-        return view('movies', compact('movies'));
+        $search = request('search');
+        if($search){
+            $movies = Movie::where([
+                ['title','like','%'.$search.'%']])
+                ->orwhere([['genre','like','%'.$search.'%']])
+                ->orwhere([['release','like','%'.$search.'%']])
+                ->orwhere([['rating','like','%'.$search.'%']])
+                ->get();
+        }else{
+            $movies = Movie::all();
+        }
+        return view('movies', compact('movies','search'));
 
-        
     }
 
     /**
@@ -26,7 +37,8 @@ class MovieController extends Controller
      */
     public function create()
     {
-        //
+        $country = Country::all();
+        return view('create', compact('country'));
     }
 
     /**
@@ -37,7 +49,12 @@ class MovieController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->all();
+
+        $data['image'] = $request ->file('image')->store('movies','public');
+        Movie::create($data);
+
+        return redirect(route('movie.index'));
     }
 
     /**
@@ -59,7 +76,9 @@ class MovieController extends Controller
      */
     public function edit($id)
     {
-        //
+        $movie = Movie::find($id);
+        $country = Country::all();
+        return view('edit', compact('movie','country'));
     }
 
     /**
@@ -71,7 +90,17 @@ class MovieController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $data = $request->all();
+        $movie = Movie::find($id);
+
+        if ($request->hasFile('image')) {
+            Storage::delete('public/' . $movie->image);
+            $data['image'] = $request->file('image')->store('movies', 'public');
+        }
+
+        $movie->update($data);
+
+        return redirect(route('movie.index'));
     }
 
     /**
@@ -82,6 +111,7 @@ class MovieController extends Controller
      */
     public function destroy($id)
     {
-        //
+        Movie::find($id)->delete();
+        return redirect(route('movie.index'));
     }
 }
